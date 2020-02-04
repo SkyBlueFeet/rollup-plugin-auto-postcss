@@ -1,0 +1,58 @@
+{
+    "name": "rollup-plugin-auto-postcss",
+    "version": "1.0.0",
+    "description": "A simple configuration rollup plugin to handle various style files",
+    "main": "dist/index.cjs.js",
+    "module": "dist/index.esm.js",
+    "types": "./types/index.d.ts",
+    "scripts": {
+        "build": "rollup -c"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/SkyBlueFeet/rollup-plugin-auto-postcss.git"
+    },
+    "keywords": [
+        "rollup",
+        "postcss",
+        "style",
+        "css",
+        "sass",
+        "scss"
+    ],
+    "author": "skybluefeet",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/SkyBlueFeet/rollup-plugin-auto-postcss/issues"
+    },
+    "homepage": "https://github.com/SkyBlueFeet/rollup-plugin-auto-postcss#readme",
+    "peerDependencies": {
+        "@rollup/pluginutils": "^3.0.8",
+        "less": "^3.10.3",
+        "lodash": "^4.17.15",
+        "node-sass": "^4.13.1",
+        "postcss": "^7.0.26",
+        "postcss-load-config": "^2.1.0",
+        "csso": "^4.0.2"
+    },
+    "devDependencies": {
+        "@rollup/plugin-typescript": "^3.0.0",
+        "@types/lodash": "^4.14.149",
+        "@types/node-sass": "^4.11.0",
+        "@types/postcss-load-config": "^2.0.1",
+        "postcss-load-plugins": "^2.0.0",
+        "rollup": "^1.31.0",
+        "rollup-plugin-typescript": "^1.0.1",
+        "tslib": "^1.10.0",
+        "typescript": "^3.7.5"
+    },
+    "dependencies": {
+        "@rollup/pluginutils": "^3.0.8",
+        "csso": "^4.0.2",
+        "less": "^3.10.3",
+        "lodash": "^4.17.15",
+        "node-sass": "^4.13.1",
+        "postcss": "^7.0.26",
+        "postcss-load-config": "^2.1.0"
+    }
+}
