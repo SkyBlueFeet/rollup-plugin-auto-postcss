@@ -1,75 +1,102 @@
-import { TransformResult } from "rollup";
 import { PluginOptions } from "./plugin.options";
-import pluginLoader, { Loader } from "./plugin.loader";
+import pluginLoader, { Rule } from "./plugin.loader";
 import { formatNode } from "../utils/format";
-import runtime from "./runtime";
+import { Compilation, compilerResults } from "./runtime";
 import output from "../utils/output";
 
 export interface StyleNode {
-    id: string;
-    name: string;
-    extension: string;
-    path: string;
-    code: string;
+    readonly id: string;
+    readonly fileName: string;
+    readonly path: string;
     options: PluginOptions;
-    cwd: string;
+    readonly cwd: string;
     dest: string;
+    context: CompileContext;
+}
+
+export interface CompileContext {
+    /**
+     * @description Current code
+     */
+    code: string;
+
+    /**
+     * @description Map mapping
+     */
+    sourceMap?: string;
+
+    /**
+     * @description Source code path
+     */
+    readonly source: string;
+
+    /**
+     * @description Source code language
+     */
+    readonly lang: string;
+
+    /**
+     *
+     *  @description Is it compiled into CSS
+     */
+    compileToCss: boolean;
+
+    /**
+     * @description Whether it has been compiled by Postcss
+     */
+    compileByPostcss: boolean;
 }
 
 type callback<T> = (
-    prev: any,
+    prev: CompileContext,
     current: T,
     index: number,
     collect: T[]
-) => any | Promise<any>;
+) => CompileContext | Promise<CompileContext>;
 
 /**
- * 自实现reduce
- * @param this
- * @param callbackfn
+ * @description reduce chain compilation style
+ *
+ * @param { Rule[] } collect All rules collection
+ *
+ * @param { CompileContext } CompileContext Compilation context
+ *
+ * @param { callback<Rule> } compiler Compile process callback
  */
-async function reduce<Rule>(
-    collect: Array<Rule>,
-    callbackfn: callback<Rule>
-): Promise<string> {
-    let result: string;
-    for (let i = 1, len = collect.length; i < len; i++) {
-        if (i === 1) result = collect[0] as any;
-        result = callbackfn(result, collect[i], i, collect);
+async function reduceCompileCode<Rule>(
+    collect: Rule[],
+    originCode: CompileContext,
+    compiler: callback<Rule>
+): Promise<CompileContext> {
+    for (let i = 0, len = collect.length; i < len; i++) {
+        originCode = await compiler(originCode, collect[i], i, collect);
     }
-    return result;
+    return originCode;
 }
 
 export default async function(
-    code: string,
-    id: string,
+    context: CompileContext,
     opts: PluginOptions
-): Promise<TransformResult> {
-    let res: Promise<string>;
+): Promise<CompileContext> {
+    const res: Promise<CompileContext> = reduceCompileCode(
+        opts.rules,
+        context,
+        async (prev: CompileContext | Promise<CompileContext>, cur: Rule) => {
+            const id = context.source;
 
-    if (opts.loaders) {
-        res = reduce(opts.loaders.reverse(), async (prev, cur, i, collect) => {
-            // console.log(cur);
-            let curCode: string;
-            i === 1 ? (curCode = code) : (curCode = await prev);
-            const styleNode: StyleNode = formatNode(id, curCode, opts);
-            if (i === 1 && pluginLoader(collect[0], id)) {
-                runtime.push(styleNode);
-                return await pluginLoader(collect[0], id).call(
-                    styleNode,
-                    collect[0].option
-                );
-            }
+            let curText: CompileContext = await prev;
+
             if (pluginLoader(cur, id)) {
-                runtime.push(styleNode);
-                return await pluginLoader(cur, id).call(styleNode, cur.option);
+                const $nodes = Compilation.set(formatNode(id, curText, opts));
+
+                curText = compilerResults.set(
+                    await pluginLoader(cur, id)($nodes, cur.options)
+                ).context;
             }
-        });
-    }
-    output(
-        opts.export + "/" + id.replace(/(.*\/)*([^.]+).*/gi, "$2") + ".css",
-        await res
+
+            return curText;
+        }
     );
 
-    return JSON.stringify(await res);
+    return res;
 }

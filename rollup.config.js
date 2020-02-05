@@ -19,16 +19,25 @@ const conf = {
     ]
 };
 
-conf.output.globals = {
-    "@rollup/pluginutils": "@rollup/pluginutils",
-    less: "less",
-    lodash: "lodash",
-    "node-sass": "node-sass",
-    postcss: "postcss",
-    "postcss-load-config": "postcss",
-    path: "path",
-    fs: "fs"
-};
+conf.external = [
+    "@rollup/pluginutils",
+    "less",
+    "lodash",
+    "node-sass",
+    "postcss",
+    "postcss-load-config",
+    "path",
+    "fs",
+    "convert-source-map"
+];
+
+const globals = {};
+
+for (const i of conf.external) {
+    globals[i] = i;
+}
+
+conf.output.globals = globals;
 
 conf.external = Object.keys(conf.output.globals);
 

@@ -1,24 +1,19 @@
 import { StyleNode } from "./transform";
-import { TransformResult } from "rollup";
 import pluginFilter from "../utils/plugin.filter";
+import { CompilerResult } from "./runtime";
 
 export type Loader = (
-    this: StyleNode,
+    node: StyleNode,
     opts: object
-) => TransformResult | Promise<TransformResult>;
+) => CompilerResult | Promise<CompilerResult>;
 
 export interface Rule {
     id: string;
-    test: RegExp;
+    test?: RegExp;
     include?: Array<RegExp | string>;
     exclude?: Array<RegExp | string>;
     loader?: Loader | Promise<Loader>;
-    option?: Record<string, unknown>;
-}
-
-interface LoaderContext {
-    id: string;
-    cwd: string;
+    options?: Record<string, unknown>;
 }
 
 export default function(role: Rule, id: string): Loader {

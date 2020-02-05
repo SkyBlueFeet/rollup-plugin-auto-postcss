@@ -1,22 +1,45 @@
 import nodeSass, { SyncOptions } from "node-sass";
-import { TransformResult } from "rollup";
 import { StyleNode } from "../lib/transform";
 import _ from "lodash";
+import { CompilerResult } from "../lib/runtime";
+import { nodeToResult } from "../utils/format";
 
 export default async function(
-    this: StyleNode,
+    node: StyleNode,
     sassOpts: SyncOptions
-): Promise<TransformResult> {
-    const defaultOptions: SyncOptions = {
-        sourceMap: true,
-        file: this.id,
-        includePaths: this.options.includePaths
+): Promise<CompilerResult> {
+    const defaultOpts: SyncOptions = {
+        sourceMap: node.id,
+        sourceMapContents: false,
+        sourceMapEmbed: false,
+        omitSourceMapUrl: true,
+        file: node.id,
+        includePaths: node.options.includePaths,
+        outputStyle: "expanded"
     };
-    const style = nodeSass.renderSync(
-        _.mergeWith(defaultOptions, sassOpts, (obj, src) => {
-            if (_.isArray(obj)) return src;
-        })
-    );
+    let $result: nodeSass.Result;
 
-    return style && style.css.toString("UTF-8");
+    /**
+     * 编译结果
+     */
+    const fincalResult = nodeToResult(node);
+
+    try {
+        $result = nodeSass.renderSync(
+            _.mergeWith(defaultOpts, sassOpts, (obj, src) => {
+                if (_.isArray(obj)) return src;
+            })
+        );
+        fincalResult.context.code = $result.css.toString("UTF-8");
+        fincalResult.context.sourceMap = JSON.stringify(
+            $result.map.toString("UTF-8")
+        );
+        fincalResult.context.compileToCss = true;
+    } catch (error) {
+        console.log(error);
+        fincalResult.status = "ERROR";
+        fincalResult.message = error;
+    }
+
+    return fincalResult;
 }

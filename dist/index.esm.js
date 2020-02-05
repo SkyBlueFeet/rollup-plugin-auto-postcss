@@ -1,10 +1,5 @@
 import _ from 'lodash';
-import postcss from 'postcss';
-import postcssrc from 'postcss-load-config';
-import nodeSass from 'node-sass';
 import rollupPluginutils from '@rollup/pluginutils';
-import fs from 'fs';
-import { dirname } from 'path';
 
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation. All rights reserved.
@@ -30,90 +25,17 @@ function __awaiter(thisArg, _arguments, P, generator) {
     });
 }
 
-const ctx = { map: { inline: true, annotation: false } };
-function postcssConf() {
-    return __awaiter(this, void 0, void 0, function* () {
-        // const { plugins, options } = await postcssrc(ctx);
-        return yield postcssrc(ctx);
-    });
-}
-const defaultOptions = {
-    postcssrc: true
-};
-function handlePluginZip(objVal, srcVal) {
-    if (_.isArray(objVal))
-        return srcVal;
-}
-function postcssLoader (postcssOpts) {
-    return __awaiter(this, void 0, void 0, function* () {
-        postcssOpts = _.mergeWith(defaultOptions, postcssOpts, handlePluginZip);
-        /**
-         * Result of postcssrc is a Promise containing the filename plus the options
-         *     and plugins that are ready to pass on to postcss.
-         */
-        let config;
-        if (postcssOpts.postcssrc)
-            config = yield postcssConf();
-        else
-            config = postcssOpts.options;
-        config.options.from = this.id;
-        /**
-         *  * Provides the result of the PostCSS transformations.
-         */
-        let obj;
-        try {
-            obj = yield postcss(config.plugins).process(this.code, config.options);
-        }
-        catch (err) {
-            console.log(err);
-        }
-        return obj && obj.css;
-    });
-}
-
-function sassLoader (sassOpts) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const defaultOptions = {
-            sourceMap: true,
-            file: this.id,
-            includePaths: this.options.includePaths
-        };
-        const style = nodeSass.renderSync(_.mergeWith(defaultOptions, sassOpts, (obj, src) => {
-            if (_.isArray(obj))
-                return src;
-        }));
-        return style && style.css.toString("UTF-8");
-    });
-}
-
-function cssLoader () {
-    return __awaiter(this, void 0, void 0, function* () {
-        return this.code;
-    });
-}
-
 const defaultConfig = {
-    extensions: [".css", ".scss", ".sass", ".less"],
+    extensions: ["css", "scss", "sass", "less"],
     include: [],
     exclude: [],
     includePaths: ["node_modules/", process.cwd()],
-    sourceMap: true,
+    sourceMap: "source-map",
     postcss: true,
-    loaders: [
-        {
-            id: "css",
-            test: /\.css$/,
-            loader: cssLoader
-        },
-        {
-            id: "sass",
-            test: /\.(sa|sc)ss$/,
-            loader: sassLoader
-        }
-    ]
+    rules: []
 };
 const uniqLoader = function (loaders) {
-    loaders = loaders.filter(item => item.id).reverse();
+    loaders = loaders.filter(item => item.id);
     return _.uniqBy(loaders, "id");
 };
 /**
@@ -123,7 +45,7 @@ const uniqLoader = function (loaders) {
  */
 const customizer = function (objValue, srcValue) {
     if (_.isArray(objValue) && objValue.every(item => item.id)) {
-        return objValue.concat(srcValue.reverse());
+        return srcValue.concat(objValue).reverse();
     }
     else if (_.isArray(objValue)) {
         return srcValue;
@@ -132,14 +54,8 @@ const customizer = function (objValue, srcValue) {
 };
 function getOptions (opts) {
     opts = _.mergeWith(defaultConfig, opts, customizer);
-    if (opts.loaders)
-        opts.loaders = uniqLoader(opts.loaders);
-    if (opts.postcss)
-        opts.loaders.unshift({
-            id: "postcss",
-            test: /\.(sa|sc|c)ss$/,
-            loader: postcssLoader
-        });
+    if (opts.rules)
+        opts.rules = uniqLoader(opts.rules);
     return opts;
 }
 
@@ -161,118 +77,130 @@ function pluginLoader (role, id) {
     return transform;
 }
 
-function formatNode(id, code, options) {
+function formatNode(id, context, options) {
     return {
         id,
-        name: id.replace(/(.*\/)*([^.]+).*/gi, "$2"),
+        fileName: id.replace(/(.*\/)*([^.]+).*/gi, "$2"),
         cwd: process.cwd(),
-        extension: "." + id.replace(/.+\./, "").toLowerCase(),
-        code,
+        context,
         options,
         dest: options.export,
         path: id.replace(/(.*\/)*([^.]+).*/gi, "$1")
     };
 }
+function formatContext(id, code) {
+    const lang = id.replace(/.+\./, "").toLowerCase();
+    return {
+        source: id,
+        code,
+        sourceMap: "{}",
+        lang,
+        compileByPostcss: false,
+        compileToCss: lang === "css"
+    };
+}
 
-const logs = [];
-var runtime = {
-    push: (log) => logs.push(log),
-    get: () => logs
+/**
+ * 当前已被编译的所有StyleNode
+ */
+const allReturns = {};
+/**
+ * 当前正在被处理的StyleNode
+ */
+let curNode;
+/**
+ * 已被StyleNode被编译后的结果集合
+ */
+const allResults = {};
+/**
+ * 当前StyleNode的编译结果
+ */
+let curResult;
+const Compilation = {
+    /**
+     *将当前节点信息添加到全局状态
+     * @param node
+     * @returns 返回传入节点信息
+     */
+    set: function (node) {
+        curNode = node;
+        allReturns[node.id] = node;
+        return node;
+    },
+    /**
+     * @returns 当前编译节点
+     */
+    getCurtNode: () => curNode,
+    /**
+     * @returns 目前已被编译和正在编译的所有节点
+     */
+    getAllNodes: () => allReturns
+};
+const compilerResults = {
+    /**
+     *将当前节点的编译结果添加到全局状态
+     * @param result
+     * @returns 返回传入的编译结果
+     */
+    set: function (result) {
+        curResult = result;
+        allResults[result.id] = result;
+        return result;
+    },
+    /**
+     * @returns 当前编译结果
+     */
+    getCurResult: () => curResult,
+    /**
+     * @returns 当前所有编译结果
+     */
+    getAllResults: () => allResults
 };
 
-function ensureParentDirsSync(dir) {
-    if (fs.existsSync(dir))
-        return true;
-    try {
-        fs.mkdirSync(dir);
-    }
-    catch (err) {
-        if (err.code === "ENOENT") {
-            ensureParentDirsSync(dirname(dir));
-            ensureParentDirsSync(dir);
-        }
-    }
-    return true;
-}
 /**
- * 检测文件或文件夹是否存在
- * @param  {String} filePath 文件路径
- * @param  {String} data 数据
+ * @description reduce chain compilation style
+ *
+ * @param { Rule[] } collect All rules collection
+ *
+ * @param { CompileContext } CompileContext Compilation context
+ *
+ * @param { callback<Rule> } compiler Compile process callback
  */
-function output (filePath, data) {
-    // const fileName = filePath.match(/[^\\/]+\.[^\\/]+$/)[0];
-    const path = filePath.replace(/(.*\/)*([^.]+).*/gi, "$1");
-    ensureParentDirsSync(path);
-    fs.writeFileSync(filePath, data, { flag: "w+" });
-    return filePath;
-}
-// function output(pluginOpts) {
-//     return;
-// }
-
-/**
- * 自实现reduce
- * @param this
- * @param callbackfn
- */
-function reduce(collect, callbackfn) {
+function reduceCompileCode(collect, originCode, compiler) {
     return __awaiter(this, void 0, void 0, function* () {
-        let result;
-        for (let i = 1, len = collect.length; i < len; i++) {
-            if (i === 1)
-                result = collect[0];
-            result = callbackfn(result, collect[i], i, collect);
+        for (let i = 0, len = collect.length; i < len; i++) {
+            originCode = yield compiler(originCode, collect[i], i, collect);
         }
-        return result;
+        return originCode;
     });
 }
-function transformCode (code, id, opts) {
+function transformCode (context, opts) {
     return __awaiter(this, void 0, void 0, function* () {
-        let res;
-        // console.log(opts.loaders);
-        if (opts.loaders) {
-            // opts.loaders.forEach(async loader => {
-            //     if (pluginLoader(loader, id)) {
-            //         runtime.push(styleNode);
-            //         res = await pluginLoader(loader, id).call(
-            //             styleNode,
-            //             loader.option
-            //         );
-            //         return res;
-            //     }
-            // });
-            // console.log(opts.loaders.reverse());
-            res = reduce(opts.loaders.reverse(), (prev, cur, i, collect) => __awaiter(this, void 0, void 0, function* () {
-                // console.log(cur);
-                let curCode;
-                i === 1 ? (curCode = code) : (curCode = yield prev);
-                const styleNode = formatNode(id, curCode, opts);
-                if (i === 1 && pluginLoader(collect[0], id)) {
-                    runtime.push(styleNode);
-                    return yield pluginLoader(collect[0], id).call(styleNode, collect[0].option);
-                }
-                if (pluginLoader(cur, id)) {
-                    runtime.push(styleNode);
-                    return yield pluginLoader(cur, id).call(styleNode, cur.option);
-                }
-            }));
-        }
-        output(opts.export + "/" + id.replace(/(.*\/)*([^.]+).*/gi, "$2") + ".css", yield res);
-        return JSON.stringify(yield res);
+        const res = reduceCompileCode(opts.rules, context, (prev, cur) => __awaiter(this, void 0, void 0, function* () {
+            const id = context.source;
+            let curText = yield prev;
+            if (pluginLoader(cur, id)) {
+                const $nodes = Compilation.set(formatNode(id, curText, opts));
+                curText = compilerResults.set(yield pluginLoader(cur, id)($nodes, cur.options)).context;
+            }
+            return curText;
+        }));
+        return res;
     });
 }
 
 function index (opts = {}) {
     const options = getOptions(opts);
-    const testExt = new RegExp(`.(${options.extensions
-        .map(item => _.trimStart(item, "."))
-        .join("|")})$`, "i");
+    const testExt = new RegExp(`.(${options.extensions.join("|")})$`, "i");
     const transform = function (code, id) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!pluginFilter(testExt, options.include, options.exclude)(id))
                 return;
-            code = "export default " + (yield transformCode(code, id, options));
-            return code;
+            const $result = yield transformCode(formatContext(id, code), options);
+            return {
+                code: `export default ${JSON.stringify($result.code)}`,
+                map: $result.sourceMap
+            };
         });
     };
     return {
