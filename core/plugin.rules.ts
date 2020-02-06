@@ -3,16 +3,19 @@ import cssLoader from "../loaders/css.loader";
 import { PluginOptions } from "./plugin.options";
 import postcssLoader from "../loaders/postcss.loader";
 import { Rule } from "./plugin.loader";
+import lessLoader from "../loaders/less.loader";
 
 const defaultRules: Rule[] = [
     {
+        id: "less",
+        loader: lessLoader
+    },
+    {
         id: "sass",
-        test: /\.(sa|sc)ss$/,
         loader: sassLoader
     },
     {
         id: "css",
-        test: /\.css$/,
         loader: cssLoader
     }
 ];
@@ -22,10 +25,14 @@ export default function(opts: PluginOptions): Rule[] {
     if (opts.postcss) {
         finalRules.push({
             id: "postcss",
-            test: /\.(sa|sc|c)ss$/,
             loader: postcssLoader
         });
     }
+
+    finalRules.map(i => {
+        i.test = opts.mapping[i.id];
+        return i;
+    });
 
     return finalRules;
 }

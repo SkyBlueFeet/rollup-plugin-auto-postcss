@@ -1,5 +1,5 @@
 import rollupPluginutils from "@rollup/pluginutils";
-import { Pattern } from "../lib/plugin.options";
+import { Pattern } from "../core/plugin.options";
 
 export default function(
     pattern: RegExp,

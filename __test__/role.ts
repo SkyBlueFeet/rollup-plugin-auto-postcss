@@ -23,3 +23,7 @@ console.log(url.replace(/(.*\/)*([^.]+).*/gi, "$1"));
 console.log(url.replace(/(.*\/)*([^.]+).*/gi, "$2"));
 
 console.log(fileName, _fileName, fileEx, fileAdd);
+
+console.log(
+    /\.(sa|sc|c|le)ss$/.test("tbsnsn/dfdunjn/dgbxnx/dfffddx/dbyzby/ssss.less")
+);

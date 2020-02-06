@@ -16,7 +16,7 @@
         "alwaysStrict": false,
         "importHelpers": true,
         "incremental": true,
-        "sourceMap": true,
+        "sourceMap": false,
         "baseUrl": "./",
         "noEmit": false,
         "outDir": "dist",

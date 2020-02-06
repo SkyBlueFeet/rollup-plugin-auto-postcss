@@ -1,10 +1,50 @@
-import postcss from "postcss";
+import postcss, { ProcessOptions } from "postcss";
 import _ from "lodash";
 
-import postcssrc, { Result, ConfigContext } from "postcss-load-config";
-import { StyleNode } from "../lib/transform";
-import { CompilerResult } from "../lib/runtime";
+import postcssrc from "postcss-load-config";
+import { StyleNode } from "../core/transform";
+import { CompilerResult } from "../core/runtime";
 import { nodeToResult } from "../utils/format";
+// import { parsedMap } from "../core/source.map";
+// import { fromObject } from "convert-source-map";
+// import Concat from "concat-with-sourcemaps";
+
+/**
+ * @description In the ConfigContext, these three options can be instances of the
+ * appropriate class, or strings. If they are strings, postcss-load-config will
+ * require() them and pass the instances along.
+ */
+
+interface ProcessOptionsPreload {
+    parser?: string | ProcessOptions["parser"];
+    stringifier?: string | ProcessOptions["stringifier"];
+    syntax?: string | ProcessOptions["syntax"];
+}
+
+/**
+ * @description Additional context options that postcss-load-config understands.
+ */
+
+interface Context {
+    cwd?: string;
+    env?: string;
+}
+
+/**
+ * @description The remaining ProcessOptions, sans the three above.
+ */
+type RemainingProcessOptions = Pick<
+    ProcessOptions,
+    Exclude<keyof ProcessOptions, keyof ProcessOptionsPreload>
+>;
+
+type ConfigContext = Context & ProcessOptionsPreload & RemainingProcessOptions;
+
+interface Result {
+    file: string;
+    options: postcss.ProcessOptions;
+    plugins: postcss.AcceptedPlugin[];
+}
 
 type PostcssLoaderOption = {
     postcssrc?: boolean;
@@ -29,13 +69,19 @@ export default async function(
         $result.message = `postcss can't compile ${$result.context.lang}`;
         return nodeToResult(node);
     }
+    // console.log(node.id);
+    // if (node.context.lang === "scss") console.log(node.context.sourceMap);
 
     const ctx: ConfigContext = {
-        map: { inline: false, annotation: true, prev: node.context.sourceMap }
+        map: {
+            inline: false,
+            annotation: false,
+            prev: node.context.sourceMap,
+            sourcesContent: true
+        }
     };
 
     async function postcssConf(): Promise<Result> {
-        // const { plugins, options } = await postcssrc(ctx);
         return await postcssrc(ctx);
     }
 
@@ -68,14 +114,32 @@ export default async function(
         finalResult.context.code = $result.css;
         finalResult.context.sourceMap = JSON.stringify($result.map.toJSON());
         finalResult.context.compileByPostcss = true;
-        // if (node.context.sourceMap) console.log(node.context.sourceMap);
-        finalResult.message = JSON.stringify($result.warnings());
+
+        // if (node.context.lang === "scss") console.log($result.map.toJSON());
+        if (node.context.lang === "less")
+            finalResult.message = JSON.stringify($result.warnings());
         $result.warnings().forEach(warn => console.log(warn));
     } catch (err) {
         finalResult.status = "ERROR";
         finalResult.message = "\n" + err;
         console.log(err);
     }
+
+    // (function(flag): void {
+    //     if (node.context.lang === flag) {
+    //         const concat = new Concat(true, node.id, "\n");
+    //         // concat.add(null, "// (c) John Doe");
+    //         concat.add(
+    //             `file1.${flag}`,
+    //             node.context.code,
+    //             node.context.sourceMap.toString()
+    //         );
+    //         concat.add(`file2.${flag}`, $result.css, $result.map.toJSON());
+
+    //         console.log(concat.sourceMap);
+    //         console.log(finalResult.context.sourceMap);
+    //     }
+    // })();
 
     return finalResult;
 }

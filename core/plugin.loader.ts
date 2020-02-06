@@ -4,7 +4,7 @@ import { CompilerResult } from "./runtime";
 
 export type Loader = (
     node: StyleNode,
-    opts: object
+    opts?: object
 ) => CompilerResult | Promise<CompilerResult>;
 
 export interface Rule {

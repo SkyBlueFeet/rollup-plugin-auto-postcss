@@ -1,7 +1,7 @@
 import nodeSass, { SyncOptions } from "node-sass";
-import { StyleNode } from "../lib/transform";
+import { StyleNode } from "../core/transform";
 import _ from "lodash";
-import { CompilerResult } from "../lib/runtime";
+import { CompilerResult } from "../core/runtime";
 import { nodeToResult } from "../utils/format";
 
 export default async function(
@@ -10,9 +10,10 @@ export default async function(
 ): Promise<CompilerResult> {
     const defaultOpts: SyncOptions = {
         sourceMap: node.id,
-        sourceMapContents: false,
+        sourceMapContents: true,
+        outFile: node.id,
         sourceMapEmbed: false,
-        omitSourceMapUrl: true,
+        omitSourceMapUrl: false,
         file: node.id,
         includePaths: node.options.includePaths,
         outputStyle: "expanded"
@@ -31,12 +32,11 @@ export default async function(
             })
         );
         fincalResult.context.code = $result.css.toString("UTF-8");
-        fincalResult.context.sourceMap = JSON.stringify(
-            $result.map.toString("UTF-8")
-        );
+        fincalResult.context.sourceMap = JSON.parse($result.map.toString());
+        // console.log(JSON.parse($result.map.toString()));
         fincalResult.context.compileToCss = true;
     } catch (error) {
-        console.log(error);
+        console.log("\n" + error + "\n");
         fincalResult.status = "ERROR";
         fincalResult.message = error;
     }

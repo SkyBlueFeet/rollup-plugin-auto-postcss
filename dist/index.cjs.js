@@ -3,6 +3,11 @@
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
 var _ = _interopDefault(require('lodash'));
+var nodeSass = _interopDefault(require('node-sass'));
+var postcss = _interopDefault(require('postcss'));
+var postcssrc = _interopDefault(require('postcss-load-config'));
+var Concat = _interopDefault(require('concat-with-sourcemaps'));
+var less = _interopDefault(require('less'));
 var rollupPluginutils = _interopDefault(require('@rollup/pluginutils'));
 
 /*! *****************************************************************************
@@ -29,6 +34,206 @@ function __awaiter(thisArg, _arguments, P, generator) {
     });
 }
 
+function formatNode(id, context, options) {
+    return {
+        id,
+        fileName: id.replace(/(.*\/)*([^.]+).*/gi, "$2"),
+        cwd: process.cwd(),
+        context,
+        options,
+        dest: options.export,
+        path: id.replace(/(.*\/)*([^.]+).*/gi, "$1")
+    };
+}
+function nodeToResult(styleNode) {
+    return {
+        status: "OK",
+        id: styleNode.id,
+        fileName: styleNode.fileName,
+        path: styleNode.path,
+        context: styleNode.context,
+        message: ""
+    };
+}
+function formatContext(id, code) {
+    const lang = id.replace(/.+\./, "").toLowerCase();
+    return {
+        source: id,
+        code,
+        sourceMap: null,
+        lang,
+        compileByPostcss: false,
+        compileToCss: lang === "css"
+    };
+}
+
+function sassLoader (node, sassOpts) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const defaultOpts = {
+            sourceMap: node.id,
+            sourceMapContents: true,
+            outFile: node.id,
+            sourceMapEmbed: false,
+            omitSourceMapUrl: false,
+            file: node.id,
+            includePaths: node.options.includePaths,
+            outputStyle: "expanded"
+        };
+        let $result;
+        /**
+         * 编译结果
+         */
+        const fincalResult = nodeToResult(node);
+        try {
+            $result = nodeSass.renderSync(_.mergeWith(defaultOpts, sassOpts, (obj, src) => {
+                if (_.isArray(obj))
+                    return src;
+            }));
+            fincalResult.context.code = $result.css.toString("UTF-8");
+            fincalResult.context.sourceMap = JSON.parse($result.map.toString());
+            // console.log(JSON.parse($result.map.toString()));
+            fincalResult.context.compileToCss = true;
+        }
+        catch (error) {
+            console.log("\n" + error + "\n");
+            fincalResult.status = "ERROR";
+            fincalResult.message = error;
+        }
+        return fincalResult;
+    });
+}
+
+var cssLoader = (node) => nodeToResult(node);
+
+const defaultOpts = {
+    postcssrc: true
+};
+function handlePluginZip(objVal, srcVal) {
+    if (_.isArray(objVal))
+        return srcVal;
+}
+function postcssLoader (node, postcssOpts) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!node.context.compileToCss) {
+            const $result = nodeToResult(node);
+            $result.status = "ERROR";
+            $result.message = `postcss can't compile ${$result.context.lang}`;
+            return nodeToResult(node);
+        }
+        // console.log(node.id);
+        // if (node.context.lang === "scss") console.log(node.context.sourceMap);
+        const ctx = {
+            map: {
+                inline: false,
+                annotation: false,
+                prev: node.context.sourceMap,
+                sourcesContent: true
+            }
+        };
+        function postcssConf() {
+            return __awaiter(this, void 0, void 0, function* () {
+                // const { plugins, options } = await postcssrc(ctx);
+                return yield postcssrc(ctx);
+            });
+        }
+        postcssOpts = _.mergeWith(defaultOpts, postcssOpts, handlePluginZip);
+        /**
+         * Result of postcssrc is a Promise containing the filename plus the options
+         *     and plugins that are ready to pass on to postcss.
+         */
+        let config;
+        if (postcssOpts.postcssrc)
+            config = yield postcssConf();
+        else
+            config = postcssOpts.options;
+        config.options.from = node.id;
+        config.options.to = node.id;
+        /**
+         *  * Provides the result of the PostCSS transformations.
+         */
+        let $result;
+        const finalResult = nodeToResult(node);
+        try {
+            $result = yield postcss(config.plugins).process(node.context.code, config.options);
+            finalResult.context.code = $result.css;
+            finalResult.context.sourceMap = JSON.stringify($result.map.toJSON());
+            finalResult.context.compileByPostcss = true;
+            // if (node.context.lang === "scss") console.log($result.map.toJSON());
+            if (node.context.lang === "less")
+                finalResult.message = JSON.stringify($result.warnings());
+            $result.warnings().forEach(warn => console.log(warn));
+        }
+        catch (err) {
+            finalResult.status = "ERROR";
+            finalResult.message = "\n" + err;
+            console.log(err);
+        }
+        (function (flag) {
+            if (node.context.lang === flag) {
+                const concat = new Concat(true, node.id, "\n");
+                // concat.add(null, "// (c) John Doe");
+                concat.add(`file1.${flag}`, node.context.code, node.context.sourceMap.toString());
+                concat.add(`file2.${flag}`, $result.css, $result.map.toJSON());
+                console.log(concat.sourceMap);
+                console.log(finalResult.context.sourceMap);
+            }
+        })();
+        return finalResult;
+    });
+}
+
+function lessLoader (node, opts = {
+    filename: node.id,
+    sourceMap: {
+        outputSourceFiles: true,
+        sourceMapFileInline: true
+    }
+}) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const $result = nodeToResult(node);
+        try {
+            const lessResult = yield less.render(node.context.code, opts);
+            $result.context.code = lessResult.css; //parsedMap(lessResult.map)
+            $result.context.sourceMap = lessResult.map;
+            $result.context.compileToCss = true;
+        }
+        catch (error) {
+            $result.status = "ERROR";
+            console.log("\n" + error + "\n");
+        }
+        return $result;
+    });
+}
+
+const defaultRules = [
+    {
+        id: "less",
+        loader: lessLoader
+    },
+    {
+        id: "sass",
+        loader: sassLoader
+    },
+    {
+        id: "css",
+        loader: cssLoader
+    }
+];
+function pluginRules (opts) {
+    const finalRules = defaultRules;
+    if (opts.postcss) {
+        finalRules.push({
+            id: "postcss",
+            loader: postcssLoader
+        });
+    }
+    finalRules.map(i => {
+        i.test = opts.mapping[i.id];
+        return i;
+    });
+    return finalRules;
+}
+
 const defaultConfig = {
     extensions: ["css", "scss", "sass", "less"],
     include: [],
@@ -36,11 +241,13 @@ const defaultConfig = {
     includePaths: ["node_modules/", process.cwd()],
     sourceMap: "source-map",
     postcss: true,
-    rules: []
-};
-const uniqLoader = function (loaders) {
-    loaders = loaders.filter(item => item.id);
-    return _.uniqBy(loaders, "id");
+    rules: [],
+    mapping: {
+        sass: /\.(sa|sc)ss$/,
+        css: /\.css$/,
+        postcss: /\.(sa|sc|c|le)ss$/,
+        less: /\.less$/
+    }
 };
 /**
  * 合并 loaders 选项
@@ -58,8 +265,7 @@ const customizer = function (objValue, srcValue) {
 };
 function getOptions (opts) {
     opts = _.mergeWith(defaultConfig, opts, customizer);
-    if (opts.rules)
-        opts.rules = uniqLoader(opts.rules);
+    opts.rules = pluginRules(opts);
     return opts;
 }
 
@@ -81,29 +287,6 @@ function pluginLoader (role, id) {
     return transform;
 }
 
-function formatNode(id, context, options) {
-    return {
-        id,
-        fileName: id.replace(/(.*\/)*([^.]+).*/gi, "$2"),
-        cwd: process.cwd(),
-        context,
-        options,
-        dest: options.export,
-        path: id.replace(/(.*\/)*([^.]+).*/gi, "$1")
-    };
-}
-function formatContext(id, code) {
-    const lang = id.replace(/.+\./, "").toLowerCase();
-    return {
-        source: id,
-        code,
-        sourceMap: "{}",
-        lang,
-        compileByPostcss: false,
-        compileToCss: lang === "css"
-    };
-}
-
 /**
  * 当前已被编译的所有StyleNode
  */
@@ -115,7 +298,7 @@ let curNode;
 /**
  * 已被StyleNode被编译后的结果集合
  */
-const allResults = {};
+const allResults = [];
 /**
  * 当前StyleNode的编译结果
  */
@@ -148,7 +331,7 @@ const compilerResults = {
      */
     set: function (result) {
         curResult = result;
-        allResults[result.id] = result;
+        allResults.push(result);
         return result;
     },
     /**
@@ -166,7 +349,7 @@ const compilerResults = {
  *
  * @param { Rule[] } collect All rules collection
  *
- * @param { CompileContext } CompileContext Compilation context
+ * @param { CompileContent } CompileContext Compilation context
  *
  * @param { callback<Rule> } compiler Compile process callback
  */
@@ -178,7 +361,7 @@ function reduceCompileCode(collect, originCode, compiler) {
         return originCode;
     });
 }
-function transformCode (context, opts) {
+function transform(context, opts) {
     return __awaiter(this, void 0, void 0, function* () {
         const res = reduceCompileCode(opts.rules, context, (prev, cur) => __awaiter(this, void 0, void 0, function* () {
             const id = context.source;
@@ -192,24 +375,38 @@ function transformCode (context, opts) {
         return res;
     });
 }
+/**
+ *
+ * @param id File path or file name, for matching purposes only, no actual reading is performed，
+ * Affects the SourceMap path
+ * @param code Source code to be translated
+ * @param options Translation options
+ * @returns { Promise<CompileContent> } dd
+ */
+function transformCode (id, code, options) {
+    return transform(formatContext(id, code), options);
+}
 
+// import sourceMap from "./core/source.map";
 function index (opts = {}) {
     const options = getOptions(opts);
     const testExt = new RegExp(`.(${options.extensions.join("|")})$`, "i");
-    const transform = function (code, id) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!pluginFilter(testExt, options.include, options.exclude)(id))
-                return;
-            const $result = yield transformCode(formatContext(id, code), options);
-            return {
-                code: `export default ${JSON.stringify($result.code)}`,
-                map: $result.sourceMap
-            };
-        });
-    };
     return {
-        name: "rollup-plugin-auto-postcss",
-        transform
+        name: "rollup-plugin-style-process",
+        transform: function (code, id) {
+            return __awaiter(this, void 0, void 0, function* () {
+                if (!pluginFilter(testExt, options.include, options.exclude)(id))
+                    return;
+                const $result = yield transformCode(id, code, options);
+                return {
+                    // If the code is not processed into CSS, the source code will be returned
+                    code: $result.compileToCss
+                        ? `export default ${JSON.stringify($result.code)}`
+                        : $result.code,
+                    map: $result.sourceMap
+                };
+            });
+        }
     };
 }
 

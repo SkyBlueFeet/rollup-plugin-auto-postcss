@@ -28,7 +28,8 @@ conf.external = [
     "postcss-load-config",
     "path",
     "fs",
-    "convert-source-map"
+    "convert-source-map",
+    "concat-with-sourcemaps"
 ];
 
 const globals = {};

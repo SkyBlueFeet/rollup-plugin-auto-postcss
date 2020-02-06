@@ -28,19 +28,21 @@
     "homepage": "https://github.com/SkyBlueFeet/rollup-plugin-style-process#readme",
     "peerDependencies": {
         "@rollup/pluginutils": "^3.0.8",
+        "convert-source-map": "^1.7.0",
+        "csso": "^4.0.2",
         "less": "^3.10.3",
         "lodash": "^4.17.15",
         "node-sass": "^4.13.1",
         "postcss": "^7.0.26",
-        "postcss-load-config": "^2.1.0",
-        "csso": "^4.0.2"
+        "postcss-load-config": "^2.1.0"
     },
     "devDependencies": {
         "@rollup/plugin-typescript": "^3.0.0",
+        "@types/convert-source-map": "^1.5.1",
+        "@types/less": "^3.0.1",
         "@types/lodash": "^4.14.149",
         "@types/node-sass": "^4.11.0",
         "@types/postcss-load-config": "^2.0.1",
-        "postcss-load-plugins": "^2.0.0",
         "rollup": "^1.31.0",
         "rollup-plugin-typescript": "^1.0.1",
         "tslib": "^1.10.0",
@@ -48,6 +50,7 @@
     },
     "dependencies": {
         "@rollup/pluginutils": "^3.0.8",
+        "concat-with-sourcemaps": "^1.1.0",
         "convert-source-map": "^1.7.0",
         "csso": "^4.0.2",
         "less": "^3.10.3",

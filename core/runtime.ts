@@ -1,11 +1,11 @@
-import { StyleNode, CompileContext } from "./transform";
+import { StyleNode, CompileContent } from "./transform";
 
 export interface CompilerResult {
     status: "OK" | "ERROR" | "WARNING";
     readonly id: string;
     readonly fileName: string;
     readonly path: string;
-    context: CompileContext;
+    context: CompileContent;
     message?: string;
 }
 
@@ -22,7 +22,7 @@ let curNode: StyleNode;
 /**
  * 已被StyleNode被编译后的结果集合
  */
-const allResults: Record<string, CompilerResult> = {};
+const allResults: CompilerResult[] = [];
 
 /**
  * 当前StyleNode的编译结果
@@ -60,7 +60,7 @@ export const compilerResults = {
      */
     set: function(result: CompilerResult): CompilerResult {
         curResult = result;
-        allResults[result.id] = result;
+        allResults.push(result);
         return result;
     },
 
@@ -72,5 +72,5 @@ export const compilerResults = {
     /**
      * @returns 当前所有编译结果
      */
-    getAllResults: (): Record<string, CompilerResult> => allResults
+    getAllResults: (): CompilerResult[] => allResults
 };

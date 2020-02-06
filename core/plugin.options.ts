@@ -1,5 +1,6 @@
 import _ from "lodash";
 import { Rule } from "./plugin.loader";
+import pluginRules from "./plugin.rules";
 
 export type EngineSuppert = "sass" | "less" | "css" | "postcss";
 
@@ -10,7 +11,7 @@ type Lang = "css" | "scss" | "sass" | "less" | "stylus" | "styl";
 export type SourceMap = false | "inline" | "source-map";
 
 export type ProcessMapping = {
-    [k in EngineSuppert]?: RegExp | RegExp[];
+    [k in EngineSuppert]?: RegExp;
 };
 
 export interface PluginOptions {
@@ -71,19 +72,31 @@ export interface PluginOptions {
 
     /**
      *
+     * @member false
+     * @member inline
+     * @member source-map
+     *
      * @default source-map
-     * @type { false | "inline" | "source-map"}
      */
     sourceMap?: SourceMap;
 
     /**
-     * * Preprocessor mapping Will replace the original configuration
-     * * Plugins need to rely on a pre-processing engine to process various pre-processors.
-     * * The files that each pre-processing engine needs to process are determined by this configuration.
-     * * When you are not sure what the configuration will affect, please configure it carefully.
-     * * By default, the plug-in can be very good job
+     * @description Preprocessor mapping Will replace the original configuration
+     * Plugins need to rely on a pre-processing engine to process various pre-processors.
+     * The files that each pre-processing engine needs to process are determined by this configuration.
+     * * When you are not sure what the configuration will affect, Please do not fill in this item.
+     * By default, the plugin can be very good job
+     * * If you configure this option, you should ensure that mapping can handle all files that need to be processed
+     * (the file is determined by `extensions`, `include`, `exclude`)
+     *
      * @example
      * [ sass: /\.(sa|sc)ss$/ ]
+     *
+     * @member sass
+     *
+     * @member postcss
+     *
+     * @member css
      */
     mapping?: ProcessMapping;
 }
@@ -95,12 +108,13 @@ const defaultConfig: PluginOptions = {
     includePaths: ["node_modules/", process.cwd()],
     sourceMap: "source-map",
     postcss: true,
-    rules: []
-};
-
-const uniqLoader = function(loaders: Rule[]): Rule[] {
-    loaders = loaders.filter(item => item.id);
-    return _.uniqBy(loaders, "id");
+    rules: [],
+    mapping: {
+        sass: /\.(sa|sc)ss$/,
+        css: /\.css$/,
+        postcss: /\.(sa|sc|c|le)ss$/,
+        less: /\.less$/
+    }
 };
 
 /**
@@ -119,7 +133,7 @@ const customizer = function(objValue: Rule[], srcValue: Rule[]): Rule[] {
 
 export default function(opts: PluginOptions): PluginOptions {
     opts = _.mergeWith(defaultConfig, opts, customizer);
-    if (opts.rules) opts.rules = uniqLoader(opts.rules);
+    opts.rules = pluginRules(opts);
 
     return opts;
 }

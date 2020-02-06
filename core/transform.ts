@@ -1,8 +1,10 @@
 import { PluginOptions } from "./plugin.options";
 import pluginLoader, { Rule } from "./plugin.loader";
-import { formatNode } from "../utils/format";
+import { formatNode, formatContext } from "../utils/format";
 import { Compilation, compilerResults } from "./runtime";
-import output from "../utils/output";
+import { ExistingRawSourceMap } from "rollup";
+
+// import output from "../utils/output";
 
 export interface StyleNode {
     readonly id: string;
@@ -11,10 +13,10 @@ export interface StyleNode {
     options: PluginOptions;
     readonly cwd: string;
     dest: string;
-    context: CompileContext;
+    context: CompileContent;
 }
 
-export interface CompileContext {
+export interface CompileContent {
     /**
      * @description Current code
      */
@@ -23,7 +25,7 @@ export interface CompileContext {
     /**
      * @description Map mapping
      */
-    sourceMap?: string;
+    sourceMap?: ExistingRawSourceMap | string;
 
     /**
      * @description Source code path
@@ -48,43 +50,43 @@ export interface CompileContext {
 }
 
 type callback<T> = (
-    prev: CompileContext,
+    prev: CompileContent,
     current: T,
     index: number,
     collect: T[]
-) => CompileContext | Promise<CompileContext>;
+) => CompileContent | Promise<CompileContent>;
 
 /**
  * @description reduce chain compilation style
  *
  * @param { Rule[] } collect All rules collection
  *
- * @param { CompileContext } CompileContext Compilation context
+ * @param { CompileContent } CompileContext Compilation context
  *
  * @param { callback<Rule> } compiler Compile process callback
  */
 async function reduceCompileCode<Rule>(
     collect: Rule[],
-    originCode: CompileContext,
+    originCode: CompileContent,
     compiler: callback<Rule>
-): Promise<CompileContext> {
+): Promise<CompileContent> {
     for (let i = 0, len = collect.length; i < len; i++) {
         originCode = await compiler(originCode, collect[i], i, collect);
     }
     return originCode;
 }
 
-export default async function(
-    context: CompileContext,
+async function transform(
+    context: CompileContent,
     opts: PluginOptions
-): Promise<CompileContext> {
-    const res: Promise<CompileContext> = reduceCompileCode(
+): Promise<CompileContent> {
+    const res: Promise<CompileContent> = reduceCompileCode(
         opts.rules,
         context,
-        async (prev: CompileContext | Promise<CompileContext>, cur: Rule) => {
+        async (prev: CompileContent | Promise<CompileContent>, cur: Rule) => {
             const id = context.source;
 
-            let curText: CompileContext = await prev;
+            let curText: CompileContent = await prev;
 
             if (pluginLoader(cur, id)) {
                 const $nodes = Compilation.set(formatNode(id, curText, opts));
@@ -99,4 +101,20 @@ export default async function(
     );
 
     return res;
+}
+
+/**
+ *
+ * @param id File path or file name, for matching purposes only, no actual reading is performed，
+ * Affects the SourceMap path
+ * @param code Source code to be translated
+ * @param options Translation options
+ * @returns { Promise<CompileContent> } dd
+ */
+export default function(
+    id: string,
+    code: string,
+    options: PluginOptions
+): Promise<CompileContent> {
+    return transform(formatContext(id, code), options);
 }

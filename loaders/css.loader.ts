@@ -1,10 +1,5 @@
-import { StyleNode } from "../lib/transform";
-import { CompilerResult } from "../lib/runtime";
+import { StyleNode } from "../core/transform";
+import { CompilerResult } from "../core/runtime";
 import { nodeToResult } from "../utils/format";
 
-export default function(node: StyleNode): CompilerResult {
-    const finalResult = nodeToResult(node);
-    finalResult.context = node.context;
-
-    return finalResult;
-}
+export default (node: StyleNode): CompilerResult => nodeToResult(node);

@@ -1,10 +1,10 @@
-import { StyleNode, CompileContext } from "../lib/transform";
-import { PluginOptions } from "../lib/plugin.options";
-import { CompilerResult } from "../lib/runtime";
+import { StyleNode, CompileContent } from "../core/transform";
+import { PluginOptions } from "../core/plugin.options";
+import { CompilerResult } from "../core/runtime";
 
 export function formatNode(
     id: string,
-    context: CompileContext,
+    context: CompileContent,
     options: PluginOptions
 ): StyleNode {
     return {
@@ -29,12 +29,12 @@ export function nodeToResult(styleNode: StyleNode): CompilerResult {
     };
 }
 
-export function formatContext(id: string, code: string): CompileContext {
+export function formatContext(id: string, code: string): CompileContent {
     const lang = id.replace(/.+\./, "").toLowerCase();
     return {
         source: id,
         code,
-        sourceMap: "{}",
+        sourceMap: null,
         lang,
         compileByPostcss: false,
         compileToCss: lang === "css"
