@@ -1,11 +1,18 @@
 import { PluginOptions } from "./plugin.options";
+export interface CompilerResult {
+    status: "OK" | "ERROR" | "WARNING";
+    readonly id: string;
+    readonly fileName: string;
+    readonly path: string;
+    content: CompileContent;
+    message?: string;
+}
 export interface StyleNode {
     readonly id: string;
     readonly fileName: string;
     readonly path: string;
     options: PluginOptions;
     readonly cwd: string;
-    dest: string;
     context: CompileContent;
 }
 export interface CompileContent {

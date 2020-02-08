@@ -1,6 +1,6 @@
 import postcss from "postcss";
 import { StyleNode } from "../core/transform";
-import { CompilerResult } from "../core/runtime";
+import { CompilerResult } from "../core/transform";
 interface Result {
     file: string;
     options: postcss.ProcessOptions;

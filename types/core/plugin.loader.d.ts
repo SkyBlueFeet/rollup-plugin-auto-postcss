@@ -1,5 +1,4 @@
-import { StyleNode } from "./transform";
-import { CompilerResult } from "./runtime";
+import { StyleNode, CompilerResult } from "./transform";
 export declare type Loader = (node: StyleNode, opts?: object) => CompilerResult | Promise<CompilerResult>;
 export interface Rule {
     id: string;

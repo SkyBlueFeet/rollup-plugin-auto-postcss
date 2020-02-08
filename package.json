@@ -6,7 +6,8 @@
     "module": "dist/index.esm.js",
     "types": "./types/index.d.ts",
     "scripts": {
-        "build": "rollup -c"
+        "build": "rollup -c",
+        "types:build": "tsc -p tsconfig.es6.json"
     },
     "repository": {
         "type": "git",

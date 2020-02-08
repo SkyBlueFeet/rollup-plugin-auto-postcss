@@ -1,5 +1,4 @@
-import { StyleNode } from "../core/transform";
-import { CompilerResult } from "../core/runtime";
+import { StyleNode, CompilerResult } from "../core/transform";
 export interface Dictionary<T> {
     [key: string]: T;
 }

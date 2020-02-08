@@ -1,4 +1,4 @@
-import { Rule } from "./plugin.loader";
+import { ExtractFn } from "./output";
 export declare type EngineSupport = "sass" | "less" | "css" | "postcss" | "stylus";
 export declare type Pattern = Array<string | RegExp>;
 declare type Lang = "css" | "scss" | "sass" | "less" | "stylus" | "styl";
@@ -6,6 +6,9 @@ export declare type SourceMap = false | "inline" | "source-map";
 export declare type ProcessMapping = {
     [k in EngineSupport]?: RegExp;
 };
+export interface Overrides {
+    extractFn?: ExtractFn;
+}
 export interface PluginOptions {
     /**
      * @description
@@ -36,14 +39,6 @@ export interface PluginOptions {
      */
     extract?: string | boolean;
     /**
-     * @description export dir
-     */
-    export?: string;
-    /**
-     * 输出文件名
-     */
-    filename?: string;
-    /**
      * @default []
      * @type { Array<string|RegExp> }
      */
@@ -68,13 +63,7 @@ export interface PluginOptions {
      * @default [process.cwd()，"node_modules/"]
      */
     includePaths?: string[];
-    overrides?: object;
-    /**
-     * @deprecated
-     *
-     * @default []
-     */
-    rules?: Rule[];
+    overrides?: Overrides;
     /**
      *
      * @member false
