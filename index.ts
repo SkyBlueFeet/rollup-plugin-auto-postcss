@@ -1,8 +1,8 @@
 import getOptions, { PluginOptions } from "./core/plugin.options";
-import { Plugin, TransformResult, PluginContext, OutputBundle } from "rollup";
+import { Plugin, TransformResult, PluginContext } from "rollup";
 import transformCode from "./core/transform";
 import pluginFilter from "./utils/plugin.filter";
-import output from "./utils/output";
+import output from "./core/output";
 import { formatCache } from "./utils/format";
 // import sourceMap from "./core/source.map";
 
@@ -42,15 +42,12 @@ export default function(opts: PluginOptions = {}): Plugin {
                 map: $result.sourceMap
             };
         },
-        buildEnd(options): Promise<void> {
+        buildEnd(): Promise<void> {
             const $result = formatCache(
                 JSON.parse(this.cache.get("results")) as string[],
                 this.cache
             );
-            return output($result, "dist/index.css");
-        },
-        generateBundle(opts, bundle: OutputBundle) {
-            // console.log(bundle);
+            return output($result, "dist/index.css", opts.overrides?.extractFn);
         }
     };
 }

@@ -20,7 +20,6 @@ export interface StyleNode {
     readonly path: string;
     options: PluginOptions;
     readonly cwd: string;
-    dest: string;
     context: CompileContent;
 }
 

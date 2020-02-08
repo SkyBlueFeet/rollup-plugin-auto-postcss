@@ -1,6 +1,5 @@
-import { StyleNode } from "./transform";
+import { StyleNode, CompilerResult } from "./transform";
 import pluginFilter from "../utils/plugin.filter";
-import { CompilerResult } from "./runtime";
 
 export type Loader = (
     node: StyleNode,

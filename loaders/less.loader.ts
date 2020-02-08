@@ -1,8 +1,7 @@
-import { StyleNode } from "../core/transform";
-import { CompilerResult } from "../core/runtime";
+import { StyleNode, CompilerResult } from "../core/transform";
 import { nodeToResult } from "../utils/format";
 import less from "less";
-import autoImport from "../utils/auto.import";
+import autoImport from "../core/auto.import";
 
 export default async function(
     node: StyleNode,

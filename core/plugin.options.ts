@@ -1,7 +1,5 @@
-import _ from "lodash";
-import { Rule } from "./plugin.loader";
-import pluginRules from "./plugin.rules";
-import { OutputFn } from "../utils/output";
+import { mergeDeep } from "../utils/replace.lodash";
+import { ExtractFn } from "./output";
 
 export type EngineSupport = "sass" | "less" | "css" | "postcss" | "stylus";
 
@@ -16,7 +14,7 @@ export type ProcessMapping = {
 };
 
 export interface Overrides {
-    extractFn?: OutputFn;
+    extractFn?: ExtractFn;
 }
 
 export interface PluginOptions {
@@ -139,21 +137,7 @@ const defaultConfig: PluginOptions = {
     }
 };
 
-/**
- * 合并 loaders 选项
- * @param objValue 第一个对象
- * @param srcValue 第二个对象
- */
-const costumier = function(objValue: Rule[], srcValue: Rule[]): Rule[] {
-    if (_.isArray(objValue) && objValue.every(item => item.id)) {
-        return srcValue.concat(objValue).reverse();
-    } else if (_.isArray(objValue)) {
-        return srcValue;
-    }
-    return;
-};
-
 export default function(opts: PluginOptions): PluginOptions {
-    opts = _.mergeWith(defaultConfig, opts, costumier);
+    opts = mergeDeep(defaultConfig, opts);
     return opts;
 }

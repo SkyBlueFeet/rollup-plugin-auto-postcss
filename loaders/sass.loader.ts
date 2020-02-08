@@ -1,9 +1,8 @@
 import nodeSass, { SyncOptions } from "node-sass";
-import { StyleNode } from "../core/transform";
-import _ from "lodash";
-import { CompilerResult } from "../core/runtime";
+import { StyleNode, CompilerResult } from "../core/transform";
+import { mergeDeep } from "../utils/replace.lodash";
 import { nodeToResult } from "../utils/format";
-import autoImport from "../utils/auto.import";
+import autoImport from "../core/auto.import";
 import { red } from "../core/plugin.message";
 
 export default async function(
@@ -33,9 +32,7 @@ export default async function(
 
         try {
             const sassResult: nodeSass.Result = userSass.renderSync(
-                _.mergeWith(defaultOpts, sassOpts, (obj, src) => {
-                    if (_.isArray(obj)) return src;
-                })
+                mergeDeep(defaultOpts, sassOpts)
             );
             finalResult.content.code = sassResult.css.toString("UTF-8");
             finalResult.content.sourceMap = JSON.parse(

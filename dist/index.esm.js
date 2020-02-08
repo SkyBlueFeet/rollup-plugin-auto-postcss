@@ -1,10 +1,8 @@
-import _ from 'lodash';
 import rollupPluginutils from '@rollup/pluginutils';
-import autoImport$1 from 'import-cwd';
+import importCwd from 'import-cwd';
 import postcssrc from 'postcss-load-config';
 import path, { dirname } from 'path';
 import fs from 'fs';
-import 'convert-source-map';
 import concatMap from 'concat-with-sourcemaps';
 
 /*! *****************************************************************************
@@ -31,6 +29,48 @@ function __awaiter(thisArg, _arguments, P, generator) {
     });
 }
 
+/**
+ * Simple object check.
+ * @param value
+ * @returns {boolean}
+ */
+function isObject(value) {
+    return value && typeof value === "object" && !Array.isArray(value);
+}
+function isUndefinedOrNull(value) {
+    return value === undefined || value === null;
+}
+/**
+ * Deep merge two objects.
+ * @param target
+ * @param ...sources
+ */
+function mergeDeep(target, ...sources) {
+    if (!sources.length)
+        return target;
+    const source = sources.shift();
+    if (isObject(target) && isObject(source)) {
+        for (const key in source) {
+            if (isObject(source[key])) {
+                if (!target[key])
+                    Object.assign(target, { [key]: {} });
+                mergeDeep(target[key], source[key]);
+            }
+            else if (!isUndefinedOrNull(source[key])) {
+                Object.assign(target, { [key]: source[key] });
+            }
+        }
+    }
+    return mergeDeep(target, ...sources);
+}
+function values(value) {
+    const _arr = [];
+    for (const key of Object.keys(value)) {
+        _arr.push(value[key]);
+    }
+    return _arr;
+}
+
 const defaultExt = ["css", "scss", "sass", "less", "styl"];
 const defaultConfig = {
     extensions: defaultExt,
@@ -48,22 +88,8 @@ const defaultConfig = {
         stylus: /\.styl$/
     }
 };
-/**
- * 合并 loaders 选项
- * @param objValue 第一个对象
- * @param srcValue 第二个对象
- */
-const costumier = function (objValue, srcValue) {
-    if (_.isArray(objValue) && objValue.every(item => item.id)) {
-        return srcValue.concat(objValue).reverse();
-    }
-    else if (_.isArray(objValue)) {
-        return srcValue;
-    }
-    return;
-};
 function getOptions (opts) {
-    opts = _.mergeWith(defaultConfig, opts, costumier);
+    opts = mergeDeep(defaultConfig, opts);
     return opts;
 }
 
@@ -92,7 +118,6 @@ function formatNode(id, context, options) {
         cwd: process.cwd(),
         context,
         options,
-        dest: options.export,
         path: id.replace(/(.*\/)*([^.]+).*/gi, "$1")
     };
 }
@@ -142,7 +167,7 @@ function autoImport (mde) {
     }
     return {
         installed,
-        module: autoImport$1.silent(mde)
+        module: importCwd.silent(mde)
     };
 }
 
@@ -174,10 +199,7 @@ function sassLoader (node, sassOpts) {
                 sourceMapRoot: node.id
             };
             try {
-                const sassResult = userSass.renderSync(_.mergeWith(defaultOpts, sassOpts, (obj, src) => {
-                    if (_.isArray(obj))
-                        return src;
-                }));
+                const sassResult = userSass.renderSync(mergeDeep(defaultOpts, sassOpts));
                 finalResult.content.code = sassResult.css.toString("UTF-8");
                 finalResult.content.sourceMap = JSON.parse(sassResult.map.toString("UTF-8"));
                 finalResult.content.compileToCss = true;
@@ -197,10 +219,6 @@ var cssLoader = (node) => nodeToResult(node);
 const defaultOpts = {
     postcssrc: true
 };
-function handlePluginZip(objVal, srcVal) {
-    if (_.isArray(objVal))
-        return srcVal;
-}
 function postcssLoader (node, postcssOpts) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!node.context.compileToCss) {
@@ -229,7 +247,7 @@ function postcssLoader (node, postcssOpts) {
             const postcssConf = () => __awaiter(this, void 0, void 0, function* () {
                 return yield postcssrc(ctx, path.dirname(node.id));
             });
-            postcssOpts = _.mergeWith(defaultOpts, postcssOpts, handlePluginZip);
+            postcssOpts = mergeDeep(defaultOpts, postcssOpts);
             /**
              * Result of postcssrc is a Promise containing the filename plus the options
              *     and plugins that are ready to pass on to postcss.
@@ -412,7 +430,7 @@ function transform(context, opts) {
  */
 var transformCode = (id, code, options) => transform(formatContext(id, code), options);
 
-function concatSourceMap(fileName, results) {
+function concatSourceMap (fileName, results) {
     const newSourceMpa = new concatMap(true, fileName, "");
     results.forEach(item => {
         newSourceMpa.add(item.id, item.code, item.map);
@@ -420,60 +438,63 @@ function concatSourceMap(fileName, results) {
     return newSourceMpa;
 }
 
-// type CallbackFn = (prev: Summary, cur: Val, index: number) => Summary;
-// function reduce(results: Result[], value: Summary, fn: CallbackFn) {
-//     const len = results.length;
-//     const i = 1;
-//     while (i < len) {
-//         value = fn(value);
-//     }
-// }
-function ensureParentDirs(dir) {
-    return new Promise((res, rej) => {
-        fs.exists(dir, exist => {
-            if (exist)
-                return res(true);
-            else {
-                fs.mkdir(dir, err => {
-                    if (!err) {
-                        res(true);
-                    }
-                    else if (err &&
-                        (err.code === "ENOENT" || err.code === "EEXIST")) {
-                        ensureParentDirs(dirname(dir));
-                        ensureParentDirs(dir);
-                        res(true);
-                    }
-                    else if (err) {
-                        rej(err);
+function output(cssUrl, summary) {
+    return __awaiter(this, void 0, void 0, function* () {
+        function ensureParentDirs(dir) {
+            return new Promise((res, rej) => {
+                fs.exists(dir, exist => {
+                    if (exist)
+                        return res(true);
+                    else {
+                        fs.mkdir(dir, err => {
+                            if (!err) {
+                                res(true);
+                            }
+                            else if (err &&
+                                (err.code === "ENOENT" || err.code === "EEXIST")) {
+                                ensureParentDirs(dirname(dir));
+                                ensureParentDirs(dir);
+                                res(true);
+                            }
+                            else if (err) {
+                                rej(err);
+                            }
+                        });
                     }
                 });
-            }
-        });
-    });
-}
-function writeFile(path, data) {
-    return new Promise((res, rej) => {
-        fs.writeFile(path, data, err => {
-            if (err)
-                rej(err);
-            else
-                res(path);
-        });
+            });
+        }
+        function writeFile(path, data) {
+            return new Promise((res, rej) => {
+                fs.writeFile(path, data, err => {
+                    if (err)
+                        rej(err);
+                    else
+                        res(path);
+                });
+            });
+        }
+        try {
+            yield ensureParentDirs(cssUrl.replace(/(.*\/)*([^.]+).*/gi, "$1"));
+            yield writeFile(cssUrl, summary.summary.code);
+            yield writeFile(cssUrl + ".map", summary.summary.map);
+            console.log("\n", green(cssUrl), green(formatSize(summary.summary.code.length)));
+        }
+        catch (error) {
+            console.log(red("\n" + error));
+            console.log(red("\nCannot write..."));
+        }
     });
 }
 function extract(results, extract, overArgs) {
     return __awaiter(this, void 0, void 0, function* () {
-        const _resultSet = _(results)
-            .values()
-            .map(item => {
+        const _resultSet = values(results).map(item => {
             return {
                 id: item.source,
                 code: item.code,
                 map: item.sourceMap
             };
-        })
-            .value();
+        });
         const mapUrl = path.resolve(extract + ".map");
         const cssUrl = path.resolve(extract);
         const newSourceMpa = concatSourceMap(mapUrl, _resultSet);
@@ -488,16 +509,7 @@ function extract(results, extract, overArgs) {
             yield overArgs(valveSummary);
         }
         else {
-            try {
-                yield ensureParentDirs(cssUrl.replace(/(.*\/)*([^.]+).*/gi, "$1"));
-                yield writeFile(cssUrl, valveSummary.summary.code);
-                yield writeFile(mapUrl, valveSummary.summary.map);
-                console.log("\n", green(extract), green(formatSize(valveSummary.summary.code.length)));
-            }
-            catch (error) {
-                console.log(red("\n" + error));
-                console.log(red("\nCannot write..."));
-            }
+            output(cssUrl, valveSummary);
         }
         return;
     });
@@ -532,12 +544,10 @@ function index (opts = {}) {
                 };
             });
         },
-        buildEnd(options) {
+        buildEnd() {
+            var _a;
             const $result = formatCache(JSON.parse(this.cache.get("results")), this.cache);
-            return extract($result, "dist/index.css");
-        },
-        generateBundle(opts, bundle) {
-            // console.log(bundle);
+            return extract($result, "dist/index.css", (_a = opts.overrides) === null || _a === void 0 ? void 0 : _a.extractFn);
         }
     };
 }

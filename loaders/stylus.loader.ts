@@ -1,8 +1,7 @@
-import { StyleNode } from "../core/transform";
-import { CompilerResult } from "../core/transform";
+import { StyleNode, CompilerResult } from "../core/transform";
 import { nodeToResult } from "../utils/format";
 import stylus from "stylus";
-import autoImport from "../utils/auto.import";
+import autoImport from "../core/auto.import";
 
 export interface Dictionary<T> {
     [key: string]: T;

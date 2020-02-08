@@ -1,4 +1,4 @@
-import autoImport from "import-cwd";
+import importCwd from "import-cwd";
 
 type InstallationStatus = {
     installed: boolean;
@@ -15,6 +15,6 @@ export default function(mde: string): InstallationStatus {
 
     return {
         installed,
-        module: autoImport.silent(mde) as Function
+        module: importCwd.silent(mde) as Function
     };
 }

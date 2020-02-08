@@ -1,13 +1,13 @@
 import postcss, { ProcessOptions } from "postcss";
-import _ from "lodash";
+import { mergeDeep } from "../utils/replace.lodash";
 
 import postcssrc from "postcss-load-config";
 import { StyleNode } from "../core/transform";
-import { CompilerResult } from "../core/runtime";
+import { CompilerResult } from "../core/transform";
 import { nodeToResult } from "../utils/format";
 import { red } from "../core/plugin.message";
 import path from "path";
-import autoImport from "../utils/auto.import";
+import autoImport from "../core/auto.import";
 
 /**
  * @description In the ConfigContext, these three options can be instances of the
@@ -55,10 +55,6 @@ const defaultOpts: PostcssLoaderOption = {
     postcssrc: true
 };
 
-function handlePluginZip(objVal: unknown, srcVal: unknown): unknown {
-    if (_.isArray(objVal)) return srcVal;
-}
-
 export default async function(
     node: StyleNode,
     postcssOpts: PostcssLoaderOption
@@ -95,7 +91,7 @@ export default async function(
             return await postcssrc(ctx, path.dirname(node.id));
         };
 
-        postcssOpts = _.mergeWith(defaultOpts, postcssOpts, handlePluginZip);
+        postcssOpts = mergeDeep(defaultOpts, postcssOpts);
 
         /**
          * Result of postcssrc is a Promise containing the filename plus the options

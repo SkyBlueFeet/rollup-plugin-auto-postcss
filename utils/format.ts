@@ -13,7 +13,6 @@ export function formatNode(
         cwd: process.cwd(),
         context,
         options,
-        dest: options.export,
         path: id.replace(/(.*\/)*([^.]+).*/gi, "$1")
     };
 }
