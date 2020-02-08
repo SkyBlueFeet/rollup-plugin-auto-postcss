@@ -29,7 +29,9 @@ conf.external = [
     "path",
     "fs",
     "convert-source-map",
-    "concat-with-sourcemaps"
+    "concat-with-sourcemaps",
+    "stylus",
+    "import-cwd"
 ];
 
 const globals = {};

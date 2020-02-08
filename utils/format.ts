@@ -1,6 +1,6 @@
-import { StyleNode, CompileContent } from "../core/transform";
+import { StyleNode, CompileContent, CompilerResult } from "../core/transform";
 import { PluginOptions } from "../core/plugin.options";
-import { CompilerResult } from "../core/runtime";
+import { PluginCache } from "rollup";
 
 export function formatNode(
     id: string,
@@ -24,7 +24,7 @@ export function nodeToResult(styleNode: StyleNode): CompilerResult {
         id: styleNode.id,
         fileName: styleNode.fileName,
         path: styleNode.path,
-        context: styleNode.context,
+        content: styleNode.context,
         message: ""
     };
 }
@@ -47,4 +47,15 @@ export function formatSize(bytes: number): string {
         : bytes < 1024000
         ? (bytes / 1024).toPrecision(3) + " kB"
         : (bytes / 1024 / 1024).toPrecision(4) + " MB";
+}
+
+export function formatCache(
+    allIds: string[],
+    Cache: PluginCache
+): Record<string, CompileContent> {
+    const _result: Record<string, CompileContent> = {};
+    allIds.forEach(i => {
+        _result[i] = JSON.parse(Cache.get(i)) as CompileContent;
+    });
+    return _result;
 }

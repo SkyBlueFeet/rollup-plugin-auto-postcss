@@ -4,8 +4,13 @@ import { PluginOptions } from "./plugin.options";
 import postcssLoader from "../loaders/postcss.loader";
 import { Rule } from "./plugin.loader";
 import lessLoader from "../loaders/less.loader";
+import stylusLoader from "../loaders/stylus.loader";
 
 const defaultRules: Rule[] = [
+    {
+        id: "stylus",
+        loader: stylusLoader
+    },
     {
         id: "less",
         loader: lessLoader

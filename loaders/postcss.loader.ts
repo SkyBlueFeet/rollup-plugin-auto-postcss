@@ -5,9 +5,9 @@ import postcssrc from "postcss-load-config";
 import { StyleNode } from "../core/transform";
 import { CompilerResult } from "../core/runtime";
 import { nodeToResult } from "../utils/format";
-// import { parsedMap } from "../core/source.map";
-// import { fromObject } from "convert-source-map";
-// import Concat from "concat-with-sourcemaps";
+import { red } from "../core/plugin.message";
+import path from "path";
+import autoImport from "../utils/auto.import";
 
 /**
  * @description In the ConfigContext, these three options can be instances of the
@@ -66,80 +66,73 @@ export default async function(
     if (!node.context.compileToCss) {
         const $result = nodeToResult(node);
         $result.status = "ERROR";
-        $result.message = `postcss can't compile ${$result.context.lang}`;
+        $result.message = `postcss can't compile ${$result.content.lang}`;
         return nodeToResult(node);
     }
-    // console.log(node.id);
-    // if (node.context.lang === "scss") console.log(node.context.sourceMap);
-
-    const ctx: ConfigContext = {
-        map: {
-            inline: false,
-            annotation: false,
-            prev: node.context.sourceMap,
-            sourcesContent: true
-        }
-    };
-
-    async function postcssConf(): Promise<Result> {
-        return await postcssrc(ctx);
-    }
-
-    postcssOpts = _.mergeWith(defaultOpts, postcssOpts, handlePluginZip);
-
-    /**
-     * Result of postcssrc is a Promise containing the filename plus the options
-     *     and plugins that are ready to pass on to postcss.
-     */
-    let config: Result;
-
-    if (postcssOpts.postcssrc) config = await postcssConf();
-    else config = postcssOpts.options;
-
-    config.options.from = node.id;
-    config.options.to = node.id;
-
-    /**
-     *  * Provides the result of the PostCSS transformations.
-     */
-    let $result: postcss.Result;
+    const installation = autoImport("postcss");
 
     const finalResult = nodeToResult(node);
 
-    try {
-        $result = await postcss(config.plugins).process(
-            node.context.code,
-            config.options
-        );
-        finalResult.context.code = $result.css;
-        finalResult.context.sourceMap = JSON.stringify($result.map.toJSON());
-        finalResult.context.compileByPostcss = true;
+    if (installation.installed) {
+        const userPostcss: typeof postcss = installation.module;
 
-        // if (node.context.lang === "scss") console.log($result.map.toJSON());
-        if (node.context.lang === "less")
-            finalResult.message = JSON.stringify($result.warnings());
-        $result.warnings().forEach(warn => console.log(warn));
-    } catch (err) {
-        finalResult.status = "ERROR";
-        finalResult.message = "\n" + err;
-        console.log(err);
+        const ctx: ConfigContext = {
+            map: {
+                inline: false,
+                annotation: false,
+                // prev: JSON.parse(node.context.sourceMap as any),
+                prev:
+                    typeof node.context.sourceMap === "string"
+                        ? node.context.sourceMap
+                        : null,
+                sourcesContent: true
+            },
+            from: node.id,
+            to: node.id + ".map"
+        };
+
+        const postcssConf = async (): Promise<Result> => {
+            return await postcssrc(ctx, path.dirname(node.id));
+        };
+
+        postcssOpts = _.mergeWith(defaultOpts, postcssOpts, handlePluginZip);
+
+        /**
+         * Result of postcssrc is a Promise containing the filename plus the options
+         *     and plugins that are ready to pass on to postcss.
+         */
+        let config: Result;
+
+        if (postcssOpts.postcssrc) config = await postcssConf();
+        else config = postcssOpts.options;
+
+        /**
+         *  * Provides the result of the PostCSS transformations.
+         */
+        let $result: postcss.Result;
+
+        try {
+            $result = await userPostcss(config.plugins).process(
+                node.context.code,
+                config.options
+            );
+            finalResult.content.code = $result.css;
+            const $map = $result.map.toJSON();
+            $map.sources = [node.id];
+            finalResult.content.sourceMap = JSON.stringify($map);
+            finalResult.content.compileByPostcss = true;
+
+            if (node.context.lang === "less") {
+                finalResult.message = JSON.stringify($result.warnings());
+                $result.warnings().forEach(warn => console.log(warn));
+            }
+        } catch (err) {
+            finalResult.status = "ERROR";
+            finalResult.message = "\n" + err;
+            console.log("\n" + red(err));
+            console.log(red("\n当前错误节点:\n"), node);
+        }
     }
-
-    // (function(flag): void {
-    //     if (node.context.lang === flag) {
-    //         const concat = new Concat(true, node.id, "\n");
-    //         // concat.add(null, "// (c) John Doe");
-    //         concat.add(
-    //             `file1.${flag}`,
-    //             node.context.code,
-    //             node.context.sourceMap.toString()
-    //         );
-    //         concat.add(`file2.${flag}`, $result.css, $result.map.toJSON());
-
-    //         console.log(concat.sourceMap);
-    //         console.log(finalResult.context.sourceMap);
-    //     }
-    // })();
 
     return finalResult;
 }

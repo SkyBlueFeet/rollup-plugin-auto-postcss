@@ -1,24 +1,11 @@
-import _ from "lodash";
 import { Rule } from "./plugin.loader";
-import pluginRules from "./plugin.rules";
-import { OutputFn } from "../utils/output";
-
-export type EngineSupport = "sass" | "less" | "css" | "postcss" | "stylus";
-
-export type Pattern = Array<string | RegExp>;
-
-type Lang = "css" | "scss" | "sass" | "less" | "stylus" | "styl";
-
-export type SourceMap = false | "inline" | "source-map";
-
-export type ProcessMapping = {
+export declare type EngineSupport = "sass" | "less" | "css" | "postcss" | "stylus";
+export declare type Pattern = Array<string | RegExp>;
+declare type Lang = "css" | "scss" | "sass" | "less" | "stylus" | "styl";
+export declare type SourceMap = false | "inline" | "source-map";
+export declare type ProcessMapping = {
     [k in EngineSupport]?: RegExp;
 };
-
-export interface Overrides {
-    extractFn?: OutputFn;
-}
-
 export interface PluginOptions {
     /**
      * @description
@@ -38,31 +25,34 @@ export interface PluginOptions {
      * @member stylus
      */
     use?: EngineSupport[];
-
     /**
      * @description File extensions to be processed
      *
      * @default ["css"]
      */
     extensions?: Lang[];
-
     /**
      *@default index.css
      */
     extract?: string | boolean;
-
+    /**
+     * @description export dir
+     */
+    export?: string;
+    /**
+     * 输出文件名
+     */
+    filename?: string;
     /**
      * @default []
      * @type { Array<string|RegExp> }
      */
     include?: Pattern;
-
     /**
      * @default []
      * @type { Array<string|RegExp> }
      */
     exclude?: Pattern;
-
     /**
      *
      * @description Do you want to use postcss?
@@ -71,7 +61,6 @@ export interface PluginOptions {
      * @type { boolean }
      */
     postcss?: boolean;
-
     /**
      * @description This array indicates that this plugin needs to search
      *  and process stylesheets in those directories
@@ -79,9 +68,13 @@ export interface PluginOptions {
      * @default [process.cwd()，"node_modules/"]
      */
     includePaths?: string[];
-
-    overrides?: Overrides;
-
+    overrides?: object;
+    /**
+     * @deprecated
+     *
+     * @default []
+     */
+    rules?: Rule[];
     /**
      *
      * @member false
@@ -94,7 +87,6 @@ export interface PluginOptions {
      * @default source-map
      */
     sourceMap?: SourceMap;
-
     /**
      * @description Preprocessor mapping Will replace the original configuration
      * Plugins need to rely on a pre-processing engine to process various pre-processors.
@@ -119,41 +111,5 @@ export interface PluginOptions {
      */
     mapping?: ProcessMapping;
 }
-
-const defaultExt: Lang[] = ["css", "scss", "sass", "less", "styl"];
-
-const defaultConfig: PluginOptions = {
-    extensions: defaultExt,
-    extract: "dist/index.css",
-    include: [],
-    exclude: [],
-    includePaths: ["node_modules/", process.cwd()],
-    sourceMap: "source-map",
-    postcss: false,
-    mapping: {
-        sass: /\.(sa|sc)ss$/,
-        css: /\.css$/,
-        postcss: /\.(css|scss|sass|less|styl)$/,
-        less: /\.less$/,
-        stylus: /\.styl$/
-    }
-};
-
-/**
- * 合并 loaders 选项
- * @param objValue 第一个对象
- * @param srcValue 第二个对象
- */
-const costumier = function(objValue: Rule[], srcValue: Rule[]): Rule[] {
-    if (_.isArray(objValue) && objValue.every(item => item.id)) {
-        return srcValue.concat(objValue).reverse();
-    } else if (_.isArray(objValue)) {
-        return srcValue;
-    }
-    return;
-};
-
-export default function(opts: PluginOptions): PluginOptions {
-    opts = _.mergeWith(defaultConfig, opts, costumier);
-    return opts;
-}
+export default function (opts: PluginOptions): PluginOptions;
+export {};

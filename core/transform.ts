@@ -1,10 +1,18 @@
 import { PluginOptions } from "./plugin.options";
 import pluginLoader, { Rule } from "./plugin.loader";
 import { formatNode, formatContext } from "../utils/format";
-import { Compilation, compilerResults } from "./runtime";
-import { ExistingRawSourceMap } from "rollup";
+import pluginRules from "./plugin.rules";
 
 // import output from "../utils/output";
+
+export interface CompilerResult {
+    status: "OK" | "ERROR" | "WARNING";
+    readonly id: string;
+    readonly fileName: string;
+    readonly path: string;
+    content: CompileContent;
+    message?: string;
+}
 
 export interface StyleNode {
     readonly id: string;
@@ -25,7 +33,7 @@ export interface CompileContent {
     /**
      * @description Map mapping
      */
-    sourceMap?: ExistingRawSourceMap | string;
+    sourceMap?: string;
 
     /**
      * @description Source code path
@@ -76,24 +84,28 @@ async function reduceCompileCode<Rule>(
     return originCode;
 }
 
+/**
+ *
+ * @param { CompileContent } context
+ *
+ * @param opts
+ */
 async function transform(
     context: CompileContent,
     opts: PluginOptions
 ): Promise<CompileContent> {
     const res: Promise<CompileContent> = reduceCompileCode(
-        opts.rules,
+        pluginRules(opts),
         context,
         async (prev: CompileContent | Promise<CompileContent>, cur: Rule) => {
             const id = context.source;
 
             let curText: CompileContent = await prev;
-
             if (pluginLoader(cur, id)) {
-                const $nodes = Compilation.set(formatNode(id, curText, opts));
+                const $nodes = formatNode(id, curText, opts);
 
-                curText = compilerResults.set(
-                    await pluginLoader(cur, id)($nodes, cur.options)
-                ).context;
+                curText = (await pluginLoader(cur, id)($nodes, cur.options))
+                    .content;
             }
 
             return curText;
@@ -105,16 +117,15 @@ async function transform(
 
 /**
  *
- * @param id File path or file name, for matching purposes only, no actual reading is performed，
+ * @requires transform
+ * @param id  File path or file name, for matching purposes only, no actual reading is performed，
  * Affects the SourceMap path
  * @param code Source code to be translated
  * @param options Translation options
- * @returns { Promise<CompileContent> } dd
+ * @returns { Promise<CompileContent> }
  */
-export default function(
+export default (
     id: string,
     code: string,
     options: PluginOptions
-): Promise<CompileContent> {
-    return transform(formatContext(id, code), options);
-}
+): Promise<CompileContent> => transform(formatContext(id, code), options);

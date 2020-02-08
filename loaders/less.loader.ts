@@ -2,6 +2,7 @@ import { StyleNode } from "../core/transform";
 import { CompilerResult } from "../core/runtime";
 import { nodeToResult } from "../utils/format";
 import less from "less";
+import autoImport from "../utils/auto.import";
 
 export default async function(
     node: StyleNode,
@@ -9,19 +10,25 @@ export default async function(
         filename: node.id,
         sourceMap: {
             outputSourceFiles: true,
-            sourceMapFileInline: true
+            sourceMapFileInline: false
         }
     }
 ): Promise<CompilerResult> {
     const $result = nodeToResult(node);
-    try {
-        const lessResult = await less.render(node.context.code, opts);
-        $result.context.code = lessResult.css; //parsedMap(lessResult.map)
-        $result.context.sourceMap = lessResult.map;
-        $result.context.compileToCss = true;
-    } catch (error) {
-        $result.status = "ERROR";
-        console.log("\n" + error + "\n");
+    const installation = autoImport("less");
+    if (installation.installed) {
+        const userLess = installation.module as typeof less;
+        try {
+            const lessResult = await userLess.render(node.context.code, opts);
+            $result.content.code = lessResult.css; //parsedMap(lessResult.map)
+            $result.content.sourceMap = JSON.parse(lessResult.map);
+            $result.content.compileToCss = true;
+        } catch (error) {
+            $result.status = "ERROR";
+            $result.message = error;
+            console.log("\n" + error + "\n");
+        }
     }
+
     return $result;
 }

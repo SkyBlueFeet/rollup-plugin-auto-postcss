@@ -27,3 +27,14 @@ console.log(fileName, _fileName, fileEx, fileAdd);
 console.log(
     /\.(sa|sc|c|le)ss$/.test("tbsnsn/dfdunjn/dgbxnx/dfffddx/dbyzby/ssss.less")
 );
+
+const langArr = ["css", "scss", "sass", "less", "styl"];
+
+const stylusMatch = new RegExp(`.(${langArr.join("|")})$`, "i");
+//错误正则 /\/\.(css|scss|sass|less|styl)$\//
+console.log(stylusMatch);
+console.log("stylus", "postcss", stylusMatch.test("test3.styl"));
+
+const path = (path: string): string => path && path.replace(/\\+/g, "/");
+
+console.log(path("/tbsnsn/dfdunjn/dgbxnx/dfffddx/dbyzby/ssss.less"));

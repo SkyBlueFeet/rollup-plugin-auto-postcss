@@ -27,7 +27,7 @@ console.log(fileExt);
 // 测试lodash merge函数
 import _ from "lodash";
 
-// function customizer(objValue, srcValue): any[] {}
+// function customizes(objValue, srcValue): any[] {}
 
 function concatLoader(objValue: unknown, srcValue: unknown): unknown {
     if (_.isArray(objValue) && objValue.every(item => item.id)) {
