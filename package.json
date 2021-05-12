@@ -35,7 +35,7 @@
         "postcss-load-config": "^2.1.0"
     },
     "devDependencies": {
-        "postcss": "^7.0.26",
+        "postcss": "^8.2.10",
         "@rollup/plugin-typescript": "^3.0.0",
         "@types/convert-source-map": "^1.5.1",
         "@types/less": "^3.0.1",
