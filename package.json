@@ -46,7 +46,7 @@
         "rollup-plugin-typescript": "^1.0.1",
         "tslib": "^1.10.0",
         "typescript": "^3.7.5",
-        "node-sass": "^4.13.1",
+        "node-sass": "^7.0.0",
         "less": "^3.10.3",
         "stylus": "^0.54.7"
     },
